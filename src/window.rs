@@ -17,14 +17,13 @@ pub struct Window {
     keys_down: Vec<KeyCode>,
     sprite: Sprite,
     sprite2: Sprite,
-    sprite3: Sprite,
 }
 
 impl Window {
     pub fn new(device: &Device, queue: &Queue, format: TextureFormat, size: PhysicalSize<u32>) -> Self {
         let screen_size = [size.width as f32, size.height as f32];
         let camera = Camera {
-            eye: Vector3::new(-1.0, 0.0, 0.0),
+            eye: Vector3::new(-180.0, 0.0, 0.0),
             // eye: Vector3::new(0.0, 0.0, 0.0),
             aspect: screen_size[0] / screen_size[1],
             fovy: 70.0,
@@ -36,9 +35,8 @@ impl Window {
         let camera_binding = UniformBinding::new(device, "Camera", camera.build_view_projection_matrix_raw(), None);
         let screen_info_binding = UniformBinding::new(device, "Screen Size", [screen_size[0], screen_size[1], 0.0, 0.0], None);
         let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-        let sprite = Sprite::new("res/parallaxForeground.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(0.0, 0.0, 0.0));
-        let sprite2 = Sprite::new("res/parallaxLayer2.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(15.0, 0.0, 0.0));
-        let sprite3 = Sprite::new("res/parallaxLayer3.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(30.0, 0.0, 0.0));
+        let sprite = Sprite::new("res/BGFront.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(15.0, 0.0, 0.0));
+        let sprite2 = Sprite::new("res/BGBack.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(30.0, 0.0, 0.0));
        
 
         Self {
@@ -50,7 +48,6 @@ impl Window {
             keys_down: vec![],
             sprite,
             sprite2,
-            sprite3,
         }
     }
 }
@@ -113,10 +110,10 @@ impl WindowHandler for Window {
         let speed = 0.2 * delta as f32;
 
         if self.keys_down.contains(&KeyCode::KeyW) {
-            self.camera.eye += self.camera.get_forward_vec() * speed;
+            self.camera.eye += Vector3::new(0.0, 1.0, 0.0) * speed;
         }
         if self.keys_down.contains(&KeyCode::KeyS) {
-            self.camera.eye -= self.camera.get_forward_vec() * speed;
+            self.camera.eye -= Vector3::new(0.0, 1.0, 0.0) * speed;
         }
         if self.keys_down.contains(&KeyCode::KeyA) {
             self.camera.eye -= self.camera.get_right_vec() * speed;
@@ -132,7 +129,6 @@ impl WindowHandler for Window {
         let time = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()-self.start_time) as f32 / 1000.0;
         self.screen_info_binding.set_data(&surface_ctx.device, [self.screen_size[0], self.screen_size[1], time, 0.0]);
 
-        self.sprite3.render(render_pass, &self.camera_binding);
         self.sprite2.render(render_pass, &self.camera_binding);
         self.sprite.render(render_pass, &self.camera_binding);
 
