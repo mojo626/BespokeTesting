@@ -299,6 +299,8 @@ dependencies = [
  "bytemuck",
  "cgmath",
  "env_logger",
+ "load_file",
+ "phf",
  "tokio",
  "wgpu",
  "wgpu_text",

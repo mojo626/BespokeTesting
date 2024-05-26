@@ -12,6 +12,8 @@ anyhow = "1.0.80"
 bytemuck = { version = "1.14.3", features=["derive"] }
 cgmath = "0.18.0"
 env_logger = "0.11.3"
+load_file = "1.0.1"
+phf = { version = "0.11.1", default-features = false }
 
 [build-dependencies]
 bespoke-engine = { path = "../bespoke-engine" }

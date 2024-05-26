@@ -1,27 +1,107 @@
-use bespoke_engine::{binding::UniformBinding, window::{SurfaceContext, WindowConfig, WindowHandler}};
-use cgmath::Vector2;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use bespoke_engine::{billboard::Billboard, binding::{create_layout, Descriptor, UniformBinding}, camera::Camera, instance::Instance, model::{Render, ToRaw}, shader::{Shader, ShaderConfig}, texture::Texture, window::{SurfaceContext, WindowConfig, WindowHandler}};
+use bytemuck::{bytes_of, NoUninit};
+use cgmath::{Quaternion, Rotation, Vector2, Vector3};
 use wgpu::{Color, Device, Limits, Queue, RenderPass, TextureFormat};
-use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent};
+use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{KeyCode, PhysicalKey::Code}};
 
-
+use crate::{load_resource, sprite::{self, Sprite}};
 
 pub struct Window {
     screen_size: [f32; 2],
     screen_info_binding: UniformBinding<[f32; 4]>,
+    start_time: u128,
+    camera: Camera,
+    camera_binding: UniformBinding<[[f32; 4]; 4]>,
+    keys_down: Vec<KeyCode>,
+    sprite: Sprite,
+    sprite2: Sprite,
+    sprite3: Sprite,
 }
 
 impl Window {
     pub fn new(device: &Device, queue: &Queue, format: TextureFormat, size: PhysicalSize<u32>) -> Self {
         let screen_size = [size.width as f32, size.height as f32];
+        let camera = Camera {
+            eye: Vector3::new(-1.0, 0.0, 0.0),
+            // eye: Vector3::new(0.0, 0.0, 0.0),
+            aspect: screen_size[0] / screen_size[1],
+            fovy: 70.0,
+            znear: 0.1,
+            zfar: 100.0,
+            ground: 0.0,
+            sky: 0.0,
+        };
+        let camera_binding = UniformBinding::new(device, "Camera", camera.build_view_projection_matrix_raw(), None);
         let screen_info_binding = UniformBinding::new(device, "Screen Size", [screen_size[0], screen_size[1], 0.0, 0.0], None);
+        let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+        let sprite = Sprite::new("res/parallaxForeground.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(0.0, 0.0, 0.0));
+        let sprite2 = Sprite::new("res/parallaxLayer2.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(15.0, 0.0, 0.0));
+        let sprite3 = Sprite::new("res/parallaxLayer3.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(30.0, 0.0, 0.0));
+       
 
         Self {
             screen_size,
             screen_info_binding,
+            start_time,
+            camera,
+            camera_binding,
+            keys_down: vec![],
+            sprite,
+            sprite2,
+            sprite3,
         }
     }
 }
 
+#[repr(C)]
+#[derive(NoUninit, Copy, Clone)]
+pub struct Vertex {
+    pub position: [f32; 3],
+    pub tex_pos: [f32; 2],
+    pub normal: [f32; 3],
+}
+
+impl Vertex {
+    #[allow(dead_code)]
+    pub fn pos(&self) -> Vector3<f32> {
+        return Vector3::new(self.position[0], self.position[1], self.position[2]);
+    }
+}
+
+impl Descriptor for Vertex {
+    fn desc<'a>() -> wgpu::VertexBufferLayout<'a> {
+        use std::mem;
+        wgpu::VertexBufferLayout {
+            array_stride: mem::size_of::<Vertex>() as wgpu::BufferAddress,
+            step_mode: wgpu::VertexStepMode::Vertex,
+            attributes: &[
+                wgpu::VertexAttribute {
+                    offset: 0,
+                    shader_location: 0,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 3]>() as wgpu::BufferAddress,
+                    shader_location: 1,
+                    format: wgpu::VertexFormat::Float32x2,
+                },
+                wgpu::VertexAttribute {
+                    offset: std::mem::size_of::<[f32; 5]>() as wgpu::BufferAddress,
+                    shader_location: 2,
+                    format: wgpu::VertexFormat::Float32x3,
+                },
+            ],
+        }
+    }
+}
+
+impl ToRaw for Vertex {
+    fn to_raw(&self) -> Vec<u8> {
+        bytes_of(self).to_vec()
+    }
+}
 
 
 impl WindowHandler for Window {
@@ -30,7 +110,32 @@ impl WindowHandler for Window {
     }
 
     fn render<'s: 'b, 'b>(&'s mut self, surface_ctx: &SurfaceContext, render_pass: & mut RenderPass<'b>, delta: f64) {
-        println!("Hello");
+        let speed = 0.2 * delta as f32;
+
+        if self.keys_down.contains(&KeyCode::KeyW) {
+            self.camera.eye += self.camera.get_forward_vec() * speed;
+        }
+        if self.keys_down.contains(&KeyCode::KeyS) {
+            self.camera.eye -= self.camera.get_forward_vec() * speed;
+        }
+        if self.keys_down.contains(&KeyCode::KeyA) {
+            self.camera.eye -= self.camera.get_right_vec() * speed;
+        }
+        if self.keys_down.contains(&KeyCode::KeyD) {
+            self.camera.eye += self.camera.get_right_vec() * speed;
+        }
+
+        
+        self.camera_binding.set_data(&surface_ctx.device, self.camera.build_view_projection_matrix_raw());
+
+
+        let time = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()-self.start_time) as f32 / 1000.0;
+        self.screen_info_binding.set_data(&surface_ctx.device, [self.screen_size[0], self.screen_size[1], time, 0.0]);
+
+        self.sprite3.render(render_pass, &self.camera_binding);
+        self.sprite2.render(render_pass, &self.camera_binding);
+        self.sprite.render(render_pass, &self.camera_binding);
+
     }
 
     fn config(&self) -> Option<WindowConfig> {
@@ -58,7 +163,17 @@ impl WindowHandler for Window {
     }
     
     fn input_event(&mut self, device: &Device, input_event: &KeyEvent) {
-        println!("input event");
+        if let Code(code) = input_event.physical_key {
+            if input_event.state.is_pressed() {
+                if !self.keys_down.contains(&code) {
+                    self.keys_down.push(code);
+                }
+            } else {
+                if let Some(i) = self.keys_down.iter().position(|x| x == &code) {
+                    self.keys_down.remove(i);
+                }
+            }
+        }
     }
     
     fn touch(&mut self, device: &Device, touch: &winit::event::Touch) {
