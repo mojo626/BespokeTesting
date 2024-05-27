@@ -9,6 +9,7 @@ mod shaders;
 mod tiles;
 mod TilesetManager;
 mod physics;
+mod player;
 
 use crate::window::Window;
 use std::env;

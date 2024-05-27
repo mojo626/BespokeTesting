@@ -3,10 +3,10 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bespoke_engine::{billboard::Billboard, binding::{create_layout, Descriptor, UniformBinding}, camera::Camera, instance::Instance, model::{Render, ToRaw}, shader::{Shader, ShaderConfig}, texture::Texture, window::{SurfaceContext, WindowConfig, WindowHandler}};
 use bytemuck::{bytes_of, NoUninit, Pod, Zeroable};
 use cgmath::{Quaternion, Rotation, Vector2, Vector3};
-use wgpu::{Color, Device, Limits, Queue, RenderPass, TextureFormat};
+use wgpu::{Color, Device, Limits, PipelineLayout, Queue, RenderPass, TextureFormat};
 use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{KeyCode, PhysicalKey::Code}};
 
-use crate::{load_resource, shaders::ShaderManager, sprite::{self, Sprite}, TilesetManager::TilesetManager};
+use crate::{load_resource, player::Player, shaders::ShaderManager, sprite::{self, Sprite}, TilesetManager::TilesetManager};
 
 pub struct Window {
     screen_size: [f32; 2],
@@ -19,6 +19,7 @@ pub struct Window {
     sprite2: Sprite,
     shaderMan: ShaderManager,
     tileset_sprite: Sprite,
+    player: Player,
 }
 
 #[repr(C)]
@@ -70,6 +71,9 @@ impl Window {
         let tileset_man = TilesetManager::new("src/res/map.json");
         let tileset_sprite = Sprite::new(r"res\output.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(0.0, 0.0, 0.0), "billboard".into());
 
+        let player_sprite = Sprite::new(r"res\player.png", &camera, device, queue, &camera_binding, format, 50.0, Vector3::new(0.0, 0.0, 0.0), "billboard".into());
+        let player = Player::new(Vector2::new(0.0, 0.0), player_sprite);
+
         Self {
             screen_size,
             screen_info_binding,
@@ -81,6 +85,7 @@ impl Window {
             sprite2,
             shaderMan,
             tileset_sprite,
+            player,
         }
     }
 }
@@ -135,25 +140,17 @@ impl ToRaw for Vertex {
 
 
 impl WindowHandler for Window {
-    fn resize(&mut self, _device: &Device, queue: &Queue, new_size: Vector2<u32>) {
+    fn resize(&mut self, device: &Device, queue: &Queue, new_size: Vector2<u32>) {
         self.screen_size = [new_size.x as f32, new_size.y as f32];
     }
 
     fn render<'s: 'b, 'b>(&'s mut self, surface_ctx: &SurfaceContext, render_pass: & mut RenderPass<'b>, delta: f64) {
         let speed = 0.2 * delta as f32;
 
-        if self.keys_down.contains(&KeyCode::KeyW) {
-            self.camera.eye += Vector3::new(0.0, 1.0, 0.0) * speed;
-        }
-        if self.keys_down.contains(&KeyCode::KeyS) {
-            self.camera.eye -= Vector3::new(0.0, 1.0, 0.0) * speed;
-        }
-        if self.keys_down.contains(&KeyCode::KeyA) {
-            self.camera.eye -= self.camera.get_right_vec() * speed;
-        }
-        if self.keys_down.contains(&KeyCode::KeyD) {
-            self.camera.eye += self.camera.get_right_vec() * speed;
-        }
+        self.player.handle_input(&self.keys_down, &surface_ctx.device, delta as f32);
+        
+        self.camera.eye.y = self.player.pos.y;
+        self.camera.eye.z = self.player.pos.x;
 
         
         self.camera_binding.set_data(&surface_ctx.device, self.camera.build_view_projection_matrix_raw());
@@ -168,6 +165,7 @@ impl WindowHandler for Window {
         self.sprite2.render(render_pass, man_ref);
         self.sprite.render(render_pass, man_ref);
         self.tileset_sprite.render(render_pass, man_ref);
+        self.player.render(render_pass, man_ref);
 
     }
 
@@ -188,11 +186,9 @@ impl WindowHandler for Window {
     }
     
     fn other_window_event(&mut self, _device: &Device, _queue: &Queue, _event: &winit::event::WindowEvent) {
-        println!("window event");
     }
     
     fn mouse_motion(&mut self, device: &Device, mouse_delta: (f64, f64)) {
-        println!("mouse motion");
     }
     
     fn input_event(&mut self, device: &Device, input_event: &KeyEvent) {

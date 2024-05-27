@@ -4,7 +4,7 @@ use cgmath::Vector2;
 
 pub struct BoxCollider {
     //pos of the center of the collider
-    pos: Vector2<f32>,
+    pub pos: Vector2<f32>,
     size: Vector2<f32>,
 }
 
