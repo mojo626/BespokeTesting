@@ -33,7 +33,7 @@ impl Player {
     pub fn handle_input(&mut self, keys_down: &Vec<KeyCode>, device: &Device, delta: f32, terrain: &Vec<BoxCollider>) {
         let speed = 0.2;
         let previous_y = self.pos.y;
-        let jump_force = -0.5;
+        let jump_force = -5.0;
 
         if keys_down.contains(&KeyCode::KeyA) {
             self.pos -= Vector2::new(1.0, 0.0) * speed * delta;
@@ -46,7 +46,7 @@ impl Player {
         }
 
         //gravity constant
-        self.vel.y += 0.001;
+        self.vel.y += 0.01 * delta;
 
         self.pos.y -= self.vel.y;
 
@@ -59,8 +59,6 @@ impl Player {
                 self.vel.y = 0.0;
             }
         }
-
-        
 
         self.sprite.set_position(Vector3::new(0.0, self.pos.y, self.pos.x), device);
     }
