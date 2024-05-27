@@ -5,6 +5,8 @@ mod window;
 mod billboard;
 mod instance;
 mod sprite;
+mod shaders;
+mod tiles;
 
 use crate::window::Window;
 use std::env;

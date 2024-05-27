@@ -1,12 +1,12 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use bespoke_engine::{billboard::Billboard, binding::{create_layout, Descriptor, UniformBinding}, camera::Camera, instance::Instance, model::{Render, ToRaw}, shader::{Shader, ShaderConfig}, texture::Texture, window::{SurfaceContext, WindowConfig, WindowHandler}};
-use bytemuck::{bytes_of, NoUninit};
+use bytemuck::{bytes_of, NoUninit, Pod, Zeroable};
 use cgmath::{Quaternion, Rotation, Vector2, Vector3};
 use wgpu::{Color, Device, Limits, Queue, RenderPass, TextureFormat};
 use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{KeyCode, PhysicalKey::Code}};
 
-use crate::{load_resource, sprite::{self, Sprite}};
+use crate::{load_resource, sprite::{self, Sprite}, shaders::ShaderManager};
 
 pub struct Window {
     screen_size: [f32; 2],
@@ -17,6 +17,31 @@ pub struct Window {
     keys_down: Vec<KeyCode>,
     sprite: Sprite,
     sprite2: Sprite,
+    shaderMan: ShaderManager,
+}
+
+#[repr(C)]
+#[derive(Pod, Clone, Copy, Zeroable)]
+pub struct ScreenInfo {
+    screen_size: [f32; 2],
+    scroll: [f32; 2],
+    mouse_pos: [f32; 2],
+    time: f32,
+    tiles_on_screen_size: f32,
+    tile_set_size: [f32; 2],
+}
+
+impl ScreenInfo {
+    fn new(screen_size: Vector2<f32>, scroll: Vector2<f32>, mouse_pos: Vector2<f32>, time: f32, tiles_on_screen_size: f32, tile_set_size: [f32; 2]) -> Self {
+        Self {
+            screen_size: screen_size.into(),
+            scroll: scroll.into(),
+            mouse_pos: mouse_pos.into(),
+            time,
+            tiles_on_screen_size,
+            tile_set_size,
+        }
+    }
 }
 
 impl Window {
@@ -35,9 +60,11 @@ impl Window {
         let camera_binding = UniformBinding::new(device, "Camera", camera.build_view_projection_matrix_raw(), None);
         let screen_info_binding = UniformBinding::new(device, "Screen Size", [screen_size[0], screen_size[1], 0.0, 0.0], None);
         let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-        let sprite = Sprite::new("res/BGFront.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(15.0, 0.0, 0.0));
-        let sprite2 = Sprite::new("res/BGBack.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(30.0, 0.0, 0.0));
-       
+        let sprite = Sprite::new(r"res\BGFront.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(15.0, 0.0, 0.0), "billboard".into());
+        let sprite2 = Sprite::new(r"res\BGBack.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(30.0, 0.0, 0.0), "billboard".into());
+        let mut shaderMan = ShaderManager::new();
+        let billboard_shader = Shader::new(include_str!("billboard.wgsl"), device, format, vec![&camera_binding.layout, &create_layout::<Texture>(device)], &[Vertex::desc(), Instance::desc()], Some(ShaderConfig {background: Some(false), ..Default::default()}));
+        shaderMan.shaders.insert("billboard".into(), billboard_shader);
 
         Self {
             screen_size,
@@ -48,6 +75,7 @@ impl Window {
             keys_down: vec![],
             sprite,
             sprite2,
+            shaderMan,
         }
     }
 }
@@ -129,8 +157,11 @@ impl WindowHandler for Window {
         let time = (SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis()-self.start_time) as f32 / 1000.0;
         self.screen_info_binding.set_data(&surface_ctx.device, [self.screen_size[0], self.screen_size[1], time, 0.0]);
 
-        self.sprite2.render(render_pass, &self.camera_binding);
-        self.sprite.render(render_pass, &self.camera_binding);
+        render_pass.set_bind_group(0, &self.camera_binding.binding, &[]);
+
+        let man_ref = &self.shaderMan;
+        self.sprite2.render(render_pass, man_ref);
+        self.sprite.render(render_pass, man_ref);
 
     }
 
