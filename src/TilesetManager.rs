@@ -1,9 +1,12 @@
 use std::fs;
 
 use bespoke_engine::{binding::UniformBinding, texture::Texture};
+use cgmath::Vector2;
 use image::{GenericImageView, ImageBuffer, Pixel, Rgb, Rgba};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use crate::physics::boxCollider::BoxCollider;
 
 #[derive(Serialize, Deserialize)]
 struct Tilemap {
@@ -29,19 +32,21 @@ struct Tile {
 
 
 pub struct TilesetManager {
-    // tileset_image: UniformBinding<Texture>,
-    // rendered_image: UniformBinding<Texture>,
+    pub colliders: Vec<BoxCollider>,
 }
 
 impl TilesetManager {
-    pub fn new(json_path: &str) -> Self {
+    pub fn new(json_path: &str, map_width: u32) -> Self {
         let json_contents = fs::read_to_string(json_path).expect("Couldn't read JSON");
         let data : Tilemap = serde_json::from_str(&json_contents).unwrap();
+        println!("{}", json_contents);
 
         let mut newImage = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(data.mapWidth * data.tileSize, data.mapHeight * data.tileSize);
         let tileset = image::open("src/res/spritesheet.png").unwrap();
         let tilesetWidth = tileset.width() / data.tileSize;
         let tilesetHeight = tileset.height() / data.tileSize;
+
+        let mut colliders = Vec::new();
 
         
         
@@ -62,6 +67,12 @@ impl TilesetManager {
                         newImage.put_pixel(xPos * data.tileSize + x, yPos * data.tileSize + y, tileset_color);
                     }
                 }
+
+                let scale_factor = map_width as f32 / (data.mapWidth * data.tileSize) as f32;
+                let coll_pos = Vector2::new(-(xPos as f32 * data.tileSize as f32 * scale_factor - (data.mapWidth as f32 * data.tileSize as f32 * scale_factor / 2.0) as f32), -(yPos as f32 * data.tileSize as f32 * scale_factor  - (data.mapHeight as f32 * data.tileSize as f32 * scale_factor / 2.0) as f32));
+                println!("{:?}", coll_pos);
+                let coll = BoxCollider::new(coll_pos, Vector2::new(data.tileSize as f32 * scale_factor, data.tileSize as f32 * scale_factor));
+                colliders.push(coll);
             }
         }
 
@@ -69,7 +80,7 @@ impl TilesetManager {
         
 
         Self {
-
+            colliders,
         }
     }
 }

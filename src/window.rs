@@ -3,6 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use bespoke_engine::{billboard::Billboard, binding::{create_layout, Descriptor, UniformBinding}, camera::Camera, instance::Instance, model::{Render, ToRaw}, shader::{Shader, ShaderConfig}, texture::Texture, window::{SurfaceContext, WindowConfig, WindowHandler}};
 use bytemuck::{bytes_of, NoUninit, Pod, Zeroable};
 use cgmath::{Quaternion, Rotation, Vector2, Vector3};
+use tiled::Tile;
 use wgpu::{Color, Device, Limits, PipelineLayout, Queue, RenderPass, TextureFormat};
 use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{KeyCode, PhysicalKey::Code}};
 
@@ -20,6 +21,7 @@ pub struct Window {
     shaderMan: ShaderManager,
     tileset_sprite: Sprite,
     player: Player,
+    tileset_man: TilesetManager,
 }
 
 #[repr(C)]
@@ -68,7 +70,7 @@ impl Window {
         let mut shaderMan = ShaderManager::new();
         let billboard_shader = Shader::new(include_str!("billboard.wgsl"), device, format, vec![&camera_binding.layout, &create_layout::<Texture>(device)], &[Vertex::desc(), Instance::desc()], Some(ShaderConfig {background: Some(false), ..Default::default()}));
         shaderMan.shaders.insert("billboard".into(), billboard_shader);
-        let tileset_man = TilesetManager::new("src/res/map.json");
+        let tileset_man = TilesetManager::new("src/res/map.json", 800);
         let tileset_sprite = Sprite::new(r"res\output.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(0.0, 0.0, 0.0), "billboard".into());
 
         let player_sprite = Sprite::new(r"res\player.png", &camera, device, queue, &camera_binding, format, 50.0, Vector3::new(0.0, 0.0, 0.0), "billboard".into());
@@ -86,6 +88,7 @@ impl Window {
             shaderMan,
             tileset_sprite,
             player,
+            tileset_man,
         }
     }
 }
@@ -147,7 +150,7 @@ impl WindowHandler for Window {
     fn render<'s: 'b, 'b>(&'s mut self, surface_ctx: &SurfaceContext, render_pass: & mut RenderPass<'b>, delta: f64) {
         let speed = 0.2 * delta as f32;
 
-        self.player.handle_input(&self.keys_down, &surface_ctx.device, delta as f32);
+        self.player.handle_input(&self.keys_down, &surface_ctx.device, delta as f32, &self.tileset_man.colliders);
         
         self.camera.eye.y = self.player.pos.y;
         self.camera.eye.z = self.player.pos.x;
