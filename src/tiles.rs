@@ -380,12 +380,12 @@ impl Tiles {
                 depth_stencil_attachment: None,
             });
             let tiles_shader = Shader::new(include_str!("tiles.wgsl"), &surface_context.device, format, vec![], &[BasicVertex::desc()], None);
-            let tile_set_texture = UniformBinding::new(&surface_context.device, "Tile Set", Texture::from_image(&surface_context.device, &surface_context.queue, img, label, format, sample_type, filter_mode), None);
-            render_pass.set_pipeline(&tiles_shader.pipeline);
-            render_pass.set_bind_group(0, &self.tiles_bind_group, &[]);
-            render_pass.set_bind_group(2, &screen_info_binding.binding, &[]);
-            render_pass.set_bind_group(3, &self.textures.binding, &[]);
-            render_pass.set_bind_group(4, &self.sprites.binding, &[]);
+            // let tile_set_texture = UniformBinding::new(&surface_context.device, "Tile Set", Texture::from_image(&surface_context.device, &surface_context.queue, img, label, format, sample_type, filter_mode), None);
+            // render_pass.set_pipeline(&tiles_shader.pipeline);
+            // render_pass.set_bind_group(0, &self.tiles_bind_group, &[]);
+            // render_pass.set_bind_group(2, &screen_info_binding.binding, &[]);
+            // render_pass.set_bind_group(3, &self.textures.binding, &[]);
+            // render_pass.set_bind_group(4, &self.sprites.binding, &[]);
             surface_context.screen_model.render(&mut render_pass);
         }
     }

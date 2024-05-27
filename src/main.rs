@@ -7,6 +7,8 @@ mod instance;
 mod sprite;
 mod shaders;
 mod tiles;
+mod TilesetManager;
+mod physics;
 
 use crate::window::Window;
 use std::env;
@@ -25,6 +27,7 @@ async fn main() {
     };
 
     let mut surface = Surface::new(ready).await;
+
 
     event_loop.run_app(&mut surface).unwrap();
 }

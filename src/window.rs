@@ -6,7 +6,7 @@ use cgmath::{Quaternion, Rotation, Vector2, Vector3};
 use wgpu::{Color, Device, Limits, Queue, RenderPass, TextureFormat};
 use winit::{dpi::{PhysicalPosition, PhysicalSize}, event::KeyEvent, keyboard::{KeyCode, PhysicalKey::Code}};
 
-use crate::{load_resource, sprite::{self, Sprite}, shaders::ShaderManager};
+use crate::{load_resource, shaders::ShaderManager, sprite::{self, Sprite}, TilesetManager::TilesetManager};
 
 pub struct Window {
     screen_size: [f32; 2],
@@ -18,6 +18,7 @@ pub struct Window {
     sprite: Sprite,
     sprite2: Sprite,
     shaderMan: ShaderManager,
+    tileset_sprite: Sprite,
 }
 
 #[repr(C)]
@@ -40,6 +41,7 @@ impl ScreenInfo {
             time,
             tiles_on_screen_size,
             tile_set_size,
+
         }
     }
 }
@@ -60,11 +62,13 @@ impl Window {
         let camera_binding = UniformBinding::new(device, "Camera", camera.build_view_projection_matrix_raw(), None);
         let screen_info_binding = UniformBinding::new(device, "Screen Size", [screen_size[0], screen_size[1], 0.0, 0.0], None);
         let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-        let sprite = Sprite::new(r"res\BGFront.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(15.0, 0.0, 0.0), "billboard".into());
-        let sprite2 = Sprite::new(r"res\BGBack.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(30.0, 0.0, 0.0), "billboard".into());
+        let sprite = Sprite::new(r"res\BGFront.png", &camera, device, queue, &camera_binding, format, 1500.0, Vector3::new(150.0, 0.0, 0.0), "billboard".into());
+        let sprite2 = Sprite::new(r"res\BGBack.png", &camera, device, queue, &camera_binding, format, 1500.0, Vector3::new(300.0, 0.0, 0.0), "billboard".into());
         let mut shaderMan = ShaderManager::new();
         let billboard_shader = Shader::new(include_str!("billboard.wgsl"), device, format, vec![&camera_binding.layout, &create_layout::<Texture>(device)], &[Vertex::desc(), Instance::desc()], Some(ShaderConfig {background: Some(false), ..Default::default()}));
         shaderMan.shaders.insert("billboard".into(), billboard_shader);
+        let tileset_man = TilesetManager::new("src/res/map.json");
+        let tileset_sprite = Sprite::new(r"res\output.png", &camera, device, queue, &camera_binding, format, 800.0, Vector3::new(0.0, 0.0, 0.0), "billboard".into());
 
         Self {
             screen_size,
@@ -76,6 +80,7 @@ impl Window {
             sprite,
             sprite2,
             shaderMan,
+            tileset_sprite,
         }
     }
 }
@@ -162,6 +167,7 @@ impl WindowHandler for Window {
         let man_ref = &self.shaderMan;
         self.sprite2.render(render_pass, man_ref);
         self.sprite.render(render_pass, man_ref);
+        self.tileset_sprite.render(render_pass, man_ref);
 
     }
 
