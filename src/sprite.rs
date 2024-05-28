@@ -14,7 +14,7 @@ pub struct Sprite {
 
 
 impl Sprite {
-    pub fn new(path: &str, camera: &Camera, device: &Device, queue: &Queue, camera_binding: & UniformBinding<[[f32; 4]; 4]>, format: TextureFormat, scale: f32, position: Vector3<f32>, shader: String) -> Self {
+    pub fn new(path: &str, device: &Device, queue: &Queue, camera_binding: & UniformBinding<[[f32; 4]; 4]>, format: TextureFormat, scale: f32, position: Vector3<f32>, shader: String) -> Self {
         let sprite_image = UniformBinding::new(device, "sprite", Texture::from_bytes(device, queue, &load_resource(path).unwrap(), "image", Some(wgpu::FilterMode::Nearest)).unwrap(), None);
         let mut sprite_dim = sprite_image.value.normalized_dimensions();
         sprite_dim = (1.0, sprite_dim.1/sprite_dim.0);

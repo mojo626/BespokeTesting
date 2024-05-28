@@ -11,18 +11,21 @@ pub struct Player {
     vel: Vector2<f32>,
     sprite: Sprite,
     collider: BoxCollider,
+    touching_ground: bool,
 }
 
 impl Player {
     pub fn new(pos: Vector2<f32>, sprite: Sprite) -> Self {
         let collider = BoxCollider::new(pos, Vector2::new(50.0, 50.0));
         let vel = Vector2::new(0.0, 0.0);
+        let touching_ground = false;
 
         Self {
             pos,
             sprite,
             collider,
             vel,
+            touching_ground,
         }
     }
 
@@ -33,7 +36,7 @@ impl Player {
     pub fn handle_input(&mut self, keys_down: &Vec<KeyCode>, device: &Device, delta: f32, terrain: &Vec<BoxCollider>) {
         let speed = 0.2;
         let previous_y = self.pos.y;
-        let jump_force = -5.0;
+        let jump_force = -8.0;
 
         if keys_down.contains(&KeyCode::KeyA) {
             self.pos -= Vector2::new(1.0, 0.0) * speed * delta;
@@ -41,7 +44,7 @@ impl Player {
         if keys_down.contains(&KeyCode::KeyD) {
             self.pos += Vector2::new(1.0, 0.0) * speed * delta;
         }
-        if keys_down.contains(&KeyCode::KeyW) {
+        if keys_down.contains(&KeyCode::KeyW) && self.touching_ground {
             self.vel.y = jump_force;
         }
 
@@ -52,11 +55,13 @@ impl Player {
 
         self.collider.pos = self.pos;
 
+        self.touching_ground = false;
         for other_coll in terrain {
             if self.collider.CheckCollision(&other_coll)
             {
                 self.pos.y = previous_y;
                 self.vel.y = 0.0;
+                self.touching_ground = true;
             }
         }
 
