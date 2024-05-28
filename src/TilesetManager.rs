@@ -51,7 +51,7 @@ impl TilesetManager {
         
         
         //loop through all of the tiles in the tile map, and then add them to the new image
-        for layer in data.layers {
+        for layer in data.layers.into_iter().rev() {
             for tile in layer.tiles {
                 //the position that we are at in the image
                 let xPos = tile.x;
@@ -64,7 +64,11 @@ impl TilesetManager {
                 for x in 0..data.tileSize {
                     for y in 0..data.tileSize {
                         let tileset_color = tileset.get_pixel(tileX * data.tileSize + x, tileY * data.tileSize + y);
-                        newImage.put_pixel(xPos * data.tileSize + x, yPos * data.tileSize + y, tileset_color);
+                        if (tileset_color.0[3] == 255)
+                        {
+                            newImage.put_pixel(xPos * data.tileSize + x, yPos * data.tileSize + y, tileset_color);
+                        }
+                        
                     }
                 }
 

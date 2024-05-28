@@ -74,7 +74,7 @@ impl Window {
         let tileset_sprite = Sprite::new(r"res\output.png", device, queue, &camera_binding, format, 800.0, Vector3::new(0.0, 0.0, 0.0), "billboard".into());
 
         let player_sprite = Sprite::new(r"res\player.png", device, queue, &camera_binding, format, 50.0, Vector3::new(0.0, 0.0, 0.0), "billboard".into());
-        let player = Player::new(Vector2::new(0.0, 0.0), player_sprite);
+        let player = Player::new(Vector2::new(100.0, 0.0), player_sprite);
 
         Self {
             screen_size,

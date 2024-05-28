@@ -36,13 +36,16 @@ impl Player {
     pub fn handle_input(&mut self, keys_down: &Vec<KeyCode>, device: &Device, delta: f32, terrain: &Vec<BoxCollider>) {
         let speed = 0.2;
         let previous_y = self.pos.y;
+        let previous_x = self.pos.x;
         let jump_force = -8.0;
 
+        let mut move_amount = Vector2::new(0.0, 0.0);
+
         if keys_down.contains(&KeyCode::KeyA) {
-            self.pos -= Vector2::new(1.0, 0.0) * speed * delta;
+            move_amount -= Vector2::new(1.0, 0.0) * speed * delta;
         }
         if keys_down.contains(&KeyCode::KeyD) {
-            self.pos += Vector2::new(1.0, 0.0) * speed * delta;
+            move_amount += Vector2::new(1.0, 0.0) * speed * delta;
         }
         if keys_down.contains(&KeyCode::KeyW) && self.touching_ground {
             self.vel.y = jump_force;
@@ -51,18 +54,35 @@ impl Player {
         //gravity constant
         self.vel.y += 0.01 * delta;
 
-        self.pos.y -= self.vel.y;
+        move_amount.y -= self.vel.y;
 
-        self.collider.pos = self.pos;
+        let mut collided_y = false;
+        let mut collided_x = false;
+
 
         self.touching_ground = false;
         for other_coll in terrain {
+            self.collider.pos = Vector2::new(self.pos.x, self.pos.y + move_amount.y);
             if self.collider.CheckCollision(&other_coll)
             {
-                self.pos.y = previous_y;
                 self.vel.y = 0.0;
                 self.touching_ground = true;
+                collided_y = true;
             }
+            self.collider.pos = Vector2::new(self.pos.x + move_amount.x, self.pos.y);
+            if self.collider.CheckCollision(&other_coll)
+            {
+                collided_x = true;
+            }
+        }
+
+        if (!collided_y)
+        {
+            self.pos.y += move_amount.y;
+        }
+        if (!collided_x)
+        {
+            self.pos.x += move_amount.x;
         }
 
         self.sprite.set_position(Vector3::new(0.0, self.pos.y, self.pos.x), device);
