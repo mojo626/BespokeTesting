@@ -20,7 +20,6 @@ impl Sprite {
         sprite_dim = (1.0, sprite_dim.1/sprite_dim.0);
         let rotation = Quaternion::look_at(Vector3::new(-1.0, 0.0, 0.0), Vector3::new(0.0, 1.0, 0.0));
         let billboard = Billboard::new(sprite_dim.0 * scale, sprite_dim.1 * scale, 1.0, position, rotation, device);
-
         Self {
             sprite_image,
             shader,
@@ -28,8 +27,10 @@ impl Sprite {
         }
     }
 
-    pub fn render<'b, 's: 'b + 'm, 'm: 'b>(&'s mut self, render_pass: & mut RenderPass<'b>, shaderMan: &'m ShaderManager) {
-        shaderMan.bind_shader(self.shader.clone(), render_pass);
+    pub fn render<'b, 's: 'b>(&'s mut self, render_pass: & mut RenderPass<'b>, shader_man: * mut ShaderManager) {
+        unsafe {
+            (*shader_man).bind_shader(self.shader.clone(), render_pass);
+        }
         render_pass.set_bind_group(1, &self.sprite_image.binding, &[]);
 
         self.billboard.render(render_pass);

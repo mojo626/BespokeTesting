@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use bespoke_engine::{billboard::Billboard, binding::{create_layout, Descriptor, UniformBinding}, camera::Camera, instance::Instance, model::{Render, ToRaw}, shader::{Shader, ShaderConfig}, texture::Texture, window::{SurfaceContext, WindowConfig, WindowHandler}};
+use bespoke_engine::{billboard::Billboard, binding::{create_layout, Descriptor, UniformBinding}, camera::Camera, instance::Instance, model::{Render, ToRaw}, shader::{self, Shader, ShaderConfig}, texture::Texture, window::{SurfaceContext, WindowConfig, WindowHandler}};
 use bytemuck::{bytes_of, NoUninit, Pod, Zeroable};
 use cgmath::{Quaternion, Rotation, Vector2, Vector3};
 use tiled::Tile;
@@ -62,14 +62,22 @@ impl Window {
             ground: 0.0,
             sky: 0.0,
         };
+
         let camera_binding = UniformBinding::new(device, "Camera", camera.build_view_projection_matrix_raw(), None);
         let screen_info_binding = UniformBinding::new(device, "Screen Size", [screen_size[0], screen_size[1], 0.0, 0.0], None);
-        let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-        let sprite = Sprite::new(r"res\BGFront.png", device, queue, &camera_binding, format, 1500.0, Vector3::new(150.0, 0.0, 0.0), "billboard".into());
-        let sprite2 = Sprite::new(r"res\BGBack.png", device, queue, &camera_binding, format, 1500.0, Vector3::new(300.0, 0.0, 0.0), "billboard".into());
         let mut shaderMan = ShaderManager::new();
         let billboard_shader = Shader::new(include_str!("billboard.wgsl"), device, format, vec![&camera_binding.layout, &create_layout::<Texture>(device)], &[Vertex::desc(), Instance::desc()], Some(ShaderConfig {background: Some(false), ..Default::default()}));
         shaderMan.shaders.insert("billboard".into(), billboard_shader);
+        
+        let start_time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+
+        
+
+        let sprite = Sprite::new(r"res\BGFront.png", device, queue, &camera_binding, format, 1500.0, Vector3::new(150.0, 0.0, 0.0), "billboard".into());
+
+        let sprite2 = Sprite::new(r"res\BGBack.png", device, queue, &camera_binding, format, 1500.0, Vector3::new(300.0, 0.0, 0.0), "billboard".into());
+
+        
         let tileset_man = TilesetManager::new("src/res/map.json", 800);
         let tileset_sprite = Sprite::new(r"res\output.png", device, queue, &camera_binding, format, 800.0, Vector3::new(0.0, 0.0, 0.0), "billboard".into());
 
@@ -147,7 +155,7 @@ impl WindowHandler for Window {
         self.screen_size = [new_size.x as f32, new_size.y as f32];
     }
 
-    fn render<'s: 'b, 'b>(&'s mut self, surface_ctx: &SurfaceContext, render_pass: & mut RenderPass<'b>, delta: f64) {
+    fn render<'s: 'c, 'c>(&'s mut self, surface_ctx: &SurfaceContext, render_pass: & mut RenderPass<'c>, delta: f64) {
         let speed = 0.2 * delta as f32;
 
         self.player.handle_input(&self.keys_down, &surface_ctx.device, delta as f32, &self.tileset_man.colliders);
@@ -164,16 +172,26 @@ impl WindowHandler for Window {
 
         render_pass.set_bind_group(0, &self.camera_binding.binding, &[]);
 
-        let man_ref = &self.shaderMan;
-        self.sprite2.render(render_pass, man_ref);
-        self.sprite.render(render_pass, man_ref);
-        self.tileset_sprite.render(render_pass, man_ref);
-        self.player.render(render_pass, man_ref);
+        //rust borrow checker :(
+        let man_ref1: *mut ShaderManager = &mut self.shaderMan;
+        
+        unsafe {
+            (*man_ref1).bind_active_shader(render_pass);
+        }
+        
+
+        self.sprite2.render(render_pass, man_ref1);
+
+        self.sprite.render(render_pass, man_ref1);
+
+        self.tileset_sprite.render(render_pass, man_ref1);
+
+        self.player.render(render_pass, man_ref1);
 
     }
 
     fn config(&self) -> Option<WindowConfig> {
-        Some(WindowConfig { background_color: Some(Color::RED), enable_post_processing: Some(false) })
+        Some(WindowConfig { background_color: Some(Color::BLUE), enable_post_processing: Some(false) })
     }
 
     fn mouse_moved(&mut self, _device: &Device, _mouse_pos: PhysicalPosition<f64>) {

@@ -29,8 +29,8 @@ impl Player {
         }
     }
 
-    pub fn render<'s: 'b + 'm, 'b,'m: 'b>(&'s mut self, render_pass: &mut RenderPass<'b>, shaderMan: &'m ShaderManager) {
-        self.sprite.render(render_pass, shaderMan);
+    pub fn render<'s: 'b + 'm, 'b,'m: 'b>(&'s mut self, render_pass: &mut RenderPass<'b>, shader_man: * mut ShaderManager) {
+        self.sprite.render(render_pass, shader_man);
     }
 
     pub fn handle_input(&mut self, keys_down: &Vec<KeyCode>, device: &Device, delta: f32, terrain: &Vec<BoxCollider>) {
